@@ -48,8 +48,8 @@ public class MainFFR105Data extends JFrame{
 
 		Stat<Double> runTimes = new Stat<Double>();
 
-		String dataSource = "C:\\Users\\Sebbe\\Documents\\GitHub\\Spare-time-project\\" +
-				"data files\\LoadCityLocations.txt";
+		String dataSource = System.getProperty("user.dir") +
+				"/data files/LoadCityLocations.txt";
 
 		AntSystem as = new AntSystem(dataSource, 60, 1, 2, 0.5);
 		double bestPathLength = as.getBestPathLength();
