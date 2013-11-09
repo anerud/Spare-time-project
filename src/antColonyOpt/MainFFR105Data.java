@@ -19,7 +19,7 @@ public class MainFFR105Data extends JFrame{
 	private static double yWindow = 600;
 	private static int circleSize = 16;
 	private static int borderDistance = 15;
-	private static int nIterations = 1000;
+	private static int nIterations = 5000;
 
 	public MainFFR105Data(){
 		super();
