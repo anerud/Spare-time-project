@@ -96,6 +96,7 @@ public class MainFFR105Data extends JFrame{
 			System.out.println("Not valid path");
 		}
 		System.out.println("Mean(iterations) = " + runTimes.getMean());
+		
 	}
 } 
 
