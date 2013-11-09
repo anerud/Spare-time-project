@@ -6,9 +6,7 @@ import java.io.IOException;
 import java.util.Random;
 
 /**
- * 
  * @author Sebastian Ånerud
- * Data taken from http://www.me.chalmers.se/~mwahde/courses/soa/2013/TSPgraphics.zip
  */
 public class AntSystem {
 	
@@ -20,17 +18,20 @@ public class AntSystem {
 	private double bestPathLength;
 	private double[][] locations;
 	private double[][] pheromoneLevels;
+	private double[][] deltaPheromone;
 	private double[][] visibility;
 	private boolean[] visited;
 	private double a;
 	private double b;
+	private double rho;
 	private Random rand;
 	
-	public AntSystem(String dataSource, int nAnts, double a, double b) {
+	public AntSystem(String dataSource, int nAnts, double a, double b, double p) {
 		loadData(dataSource);
 		this.nAnts = nAnts;
 		this.a = a;
 		this.b = b;
+		this.rho = p;
 		initializeAS();
 	}
 	
@@ -38,77 +39,85 @@ public class AntSystem {
 	 * Iterates the Ant System once.
 	 * @return the currently best path
 	 */
-	public int[] iterateACO() {
+	public void iterateACO() {
+		deltaPheromone = new double[nLocations][nLocations];
 		for(int k = 0; k<nAnts; k++) {
-			System.out.println("Ant: " + k);
+			/*
+			 * Generate path
+			 */
 			int start = rand.nextInt(nLocations);
 			path[0] = start;
 			pathLength = 0;
 			visited[start]=true;
 			int lastVisited = start;
-			double[] pe = new double[nLocations];
-			double marginSum = 0;
-			for(int i=0; i<nLocations;i++) {
-				pe[i] = Math.pow(pheromoneLevels[lastVisited][i], a)*
-						 Math.pow(visibility[lastVisited][i], b);
-				marginSum += pe[i];
-			}
-			marginSum -= pe[start]; //Correction because start was added in for-loop above.
-			
-			/*
-			 * Generate path
-			 */
 			for(int i = 1; i<nLocations;i++) {
-//				System.out.println("Iteration: " + i);
-//				double checksum = 0;
-//				for(int ii = 0; ii<nLocations;ii++) {
-//					if(!visited[ii]) {
-//						checksum += pe[ii];
-//					}
-//				}
-//				System.out.println("Cumulative sum: " + (checksum/marginSum));
-				
+				/*
+				 * Prepare pheromone levels
+				 */
+				double[] pe = new double[nLocations];
+				double marginSum = 0;
+				for(int j=0; j<nLocations;j++) {
+					if(!visited[j]) {
+						pe[j] = Math.pow(pheromoneLevels[lastVisited][j], a)*
+								 Math.pow(visibility[lastVisited][j], b);
+						marginSum += pe[j];
+					} 
+				}
+		
 				/*
 				 * randomize next location in path
 				 */
 				double p = rand.nextDouble()*marginSum;
 				int nextLocation = 0;
-				double peCumulative = 0;
+				while(visited[nextLocation]) {
+					nextLocation++;
+				}
+				double peCumulative = pe[nextLocation];
 				while(peCumulative < p) {
+					nextLocation++;
 					if(!visited[nextLocation]) {
 						peCumulative += pe[nextLocation];
 					}
-					nextLocation++;
 				}
-				nextLocation--; //Correction
-//				System.out.println(nextLocation + " | " + p + " | " + peCumulative);
-				
 				/*
 				 * Update path and variables for next iteration
 				 */
 				path[i] = nextLocation;
-				pathLength += visibility[lastVisited][nextLocation];
+				pathLength += 1/visibility[lastVisited][nextLocation];
 				visited[nextLocation] = true;
-				marginSum -= pe[nextLocation];
 				lastVisited = nextLocation;
 				
-//				System.out.println("------------------------------------------");
 			}
 			
-//			System.out.println("Generated path: ");
-//			for(int i=0;i<nLocations;i++){
-//				System.out.print(path[i] + ", ");
-//			}
-//			System.out.println("");
-//			System.out.println(isPermutation(path));
-//			System.out.println("");
+			/*
+			 * Add the length of trip back to first location
+			 */
+			pathLength += 1/visibility[lastVisited][start];
 			
-			System.out.println(pathLength);
+			/*
+			 * Update best path
+			 */
+			if(pathLength < bestPathLength) {
+				bestPathLength = pathLength;
+				bestPath = path.clone();
+			}
+			
+			/*
+			 * Update deltaPheromone
+			 */
+			for(int i = 1; i<nLocations; i++) {
+				deltaPheromone[path[i-1]][path[i]] += 1/pathLength;
+			}
+			deltaPheromone[nLocations-1][path[0]] += 1/pathLength;
 			
 			clearVisitedList();
 		}
 		
-		return bestPath;
+		for(int i = 0; i<nLocations;i++) {
+			for(int j = 0; j<nLocations; j++) {
+				pheromoneLevels[i][j] = (1-rho)*pheromoneLevels[i][j] + deltaPheromone[i][j];
+			}
+		}
 	}
 	
 	/**
@@ -119,7 +128,22 @@ public class AntSystem {
 	}
 	
 	/**
-	 * Resets the array visited to false.
+	 * Returns the best path (not a copy of it for the sake of performance).
+	 * @return returns an int[]-reference to the best path.
+	 */
+	public int[] getBestpath(){
+		return bestPath.clone();
+	}
+	
+	/**
+	 * @return the length of the best path.
+	 */
+	public double getBestPathLength(){
+		return bestPathLength;
+	}
+	
+	/**
+	 * Resets the array "visited" to false.
 	 */
 	private void clearVisitedList(){
 		for(int i=0; i<nLocations;i++) {
@@ -152,7 +176,7 @@ public class AntSystem {
 			for(int j = i + 1; j < nLocations; j++) {
 				double dx = locations[i][0] - locations[j][0];
 				double dy = locations[i][1] - locations[j][1];
-				visibility[i][j] = Math.sqrt(dx*dx + dy*dy);
+				visibility[i][j] = 1/Math.sqrt(dx*dx + dy*dy);
 				visibility[j][i] = visibility[i][j];
 			}
 		}
@@ -170,19 +194,19 @@ public class AntSystem {
 			double nnDistance = Double.MAX_VALUE;
 			for(int j = 0; j < nLocations; j++) {
 				if (!visited[j]) {
-					if(nnDistance > visibility[j][lastVisited]){
+					if(nnDistance > 1/visibility[j][lastVisited]){
 						nn = j;
-						nnDistance = visibility[j][lastVisited];
+						nnDistance = 1/visibility[j][lastVisited];
 					}
 				}
 			}
 			path[i]=nn;
-			nnPathLength += visibility[nn][lastVisited];
+			nnPathLength += 1/visibility[nn][lastVisited];
 			visited[nn] = true;
 			lastVisited = nn;
 		}
 		clearVisitedList();
-		nnPathLength += visibility[start][lastVisited];
+		nnPathLength += 1/visibility[start][lastVisited];
 		bestPathLength = nnPathLength;
 		bestPath = path;
 		
@@ -228,22 +252,5 @@ public class AntSystem {
 			e.printStackTrace();
 		}
 	
-	}
-	
-	/**
-	 * Checks if an array is a permutation of the numbers 
-	 * 0 to (array.length - 1).
-	 * @param perm array with a possible permutation.
-	 * @return true if it is a permutation false otherwise.
-	 */
-	private boolean isPermutation(int[] perm) {
-		boolean[] checked = new boolean[perm.length];
-		for(int i=0; i<perm.length;i++) {
-			if(checked[perm[i]]) {
-				return false;
-			}
-			checked[perm[i]] = true;
-		}
-		return true;
 	}
 }
