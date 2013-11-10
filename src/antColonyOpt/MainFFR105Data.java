@@ -1,18 +1,21 @@
 package antColonyOpt;
 
-import Util.Stat;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+
+import Util.Stat;
 /**
  * @author Sebastian Ånerud
  * Data taken from http://www.me.chalmers.se/~mwahde/courses/soa/2013/TSPgraphics.zip
  */
-
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.KeyEvent;
-
-import javax.swing.*;
 
 public class MainFFR105Data extends JPanel{
 
@@ -29,7 +32,6 @@ public class MainFFR105Data extends JPanel{
 	private static String dataSource = System.getProperty("user.dir") +
 			"/data files/LoadCityLocations.txt";
 	private static MainFFR105Data f;
-	private static boolean running = false;
 			
 
 	public MainFFR105Data(){
@@ -96,7 +98,7 @@ public class MainFFR105Data extends JPanel{
 	private class ButtonPanel extends JPanel implements ActionListener {
 
         public ButtonPanel() {
-        	JButton startButton = new JButton("Start new");
+        	startButton = new JButton("Start new");
         	startButton.addActionListener(this);
             this.add(startButton);
         }
