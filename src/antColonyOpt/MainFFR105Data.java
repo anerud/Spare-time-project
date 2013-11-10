@@ -25,25 +25,6 @@ public class MainFFR105Data extends JFrame{
 		super();
 	}
 
-	@Override
-	public void paint(Graphics g){
-		g.clearRect(0, 0, (int)xWindow, (int)yWindow);
-		g.setColor(Color.blue);
-		for(int i = 0; i<nodes.length;i++) {
-			g.fillOval(((int)(nodes[i][0]*xyScale)-circleSize/2+borderDistance), 
-					((int)(nodes[i][1]*xyScale)-circleSize/2+borderDistance), 
-					circleSize, circleSize);
-		}
-		
-		g.setColor(Color.red);
-		for(int i = 1; i<path.length;i++) {
-			g.drawLine(((int)(nodes[path[i-1]][0]*xyScale)+borderDistance), 
-					  ((int)(nodes[path[i-1]][1]*xyScale)+borderDistance), 
-					  ((int)(nodes[path[i]][0]*xyScale)+borderDistance), 
-					  ((int)(nodes[path[i]][1]*xyScale)+borderDistance));
-		}
-	}
-
 	public static void main(String arg[]){
 
 		Stat<Double> runTimes = new Stat<Double>();
@@ -90,13 +71,30 @@ public class MainFFR105Data extends JFrame{
 				f.repaint();
 			}
 		}
-		if(Util.Util.isPermutation(as.getBestpath())) {
-			System.out.println("Valid path");
-		} else {
-			System.out.println("Not valid path");
+		if(!Util.Util.isPermutation(as.getBestpath())) {
+			System.out.println("Not valid path!!!");
 		}
-		System.out.println("Mean(iterations) = " + runTimes.getMean());
+		System.out.println("Iteration running time mean = " + runTimes.getMean());
 		
+	}
+	
+	@Override
+	public void paint(Graphics g){
+		g.clearRect(0, 0, (int)xWindow, (int)yWindow);
+		g.setColor(Color.blue);
+		for(int i = 0; i<nodes.length;i++) {
+			g.fillOval(((int)(nodes[i][0]*xyScale)-circleSize/2+borderDistance), 
+					((int)(nodes[i][1]*xyScale)-circleSize/2+borderDistance), 
+					circleSize, circleSize);
+		}
+		
+		g.setColor(Color.red);
+		for(int i = 1; i<path.length;i++) {
+			g.drawLine(((int)(nodes[path[i-1]][0]*xyScale)+borderDistance), 
+					  ((int)(nodes[path[i-1]][1]*xyScale)+borderDistance), 
+					  ((int)(nodes[path[i]][0]*xyScale)+borderDistance), 
+					  ((int)(nodes[path[i]][1]*xyScale)+borderDistance));
+		}
 	}
 } 
 
