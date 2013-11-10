@@ -13,7 +13,7 @@ public class AntSystem {
 	private int nLocations = 0;
 	private int nAnts;
 	private int[] bestPath;
-	private int[] path;
+	private int[] currentPath;
 	private double pathLength;
 	private double bestPathLength;
 	private double[][] locations;
@@ -42,18 +42,15 @@ public class AntSystem {
 	public void iterateACO() {
 		deltaPheromone = new double[nLocations][nLocations];
 		for(int k = 0; k<nAnts; k++) {
-			/*
-			 * Generate path
-			 */
+			
+			//Randomize starting point in path
 			int start = rand.nextInt(nLocations);
-			path[0] = start;
+			currentPath[0] = start;
 			pathLength = 0;
 			visited[start]=true;
 			int lastVisited = start;
 			for(int i = 1; i<nLocations;i++) {
-				/*
-				 * Prepare pheromone levels
-				 */
+				//Prepare the pheromone levels for step i in path.
 				double[] pe = new double[nLocations];
 				double marginSum = 0;
 				for(int j=0; j<nLocations;j++) {
@@ -64,9 +61,7 @@ public class AntSystem {
 					} 
 				}
 		
-				/*
-				 * randomize next location in path
-				 */
+				//randomize next location in path
 				double p = rand.nextDouble()*marginSum;
 				int nextLocation = 0;
 				while(visited[nextLocation]) {
@@ -79,40 +74,35 @@ public class AntSystem {
 						peCumulative += pe[nextLocation];
 					}
 				}
-				/*
-				 * Update path and variables for next iteration
-				 */
-				path[i] = nextLocation;
+				
+				//Update path and variables for next iteration
+				currentPath[i] = nextLocation;
 				pathLength += 1/visibility[lastVisited][nextLocation];
 				visited[nextLocation] = true;
 				lastVisited = nextLocation;
 				
 			}
 			
-			/*
-			 * Add the length of trip back to first location
-			 */
+			// Add the length of trip back to first location
 			pathLength += 1/visibility[lastVisited][start];
 			
-			/*
-			 * Update best path
-			 */
+			// Update best path
 			if(pathLength < bestPathLength) {
 				bestPathLength = pathLength;
-				bestPath = path.clone();
+				bestPath = currentPath.clone();
 			}
 			
-			/*
-			 * Update deltaPheromone
-			 */
+			// Update deltaPheromone
 			for(int i = 1; i<nLocations; i++) {
-				deltaPheromone[path[i-1]][path[i]] += 1/pathLength;
+				deltaPheromone[currentPath[i-1]][currentPath[i]] += 1/pathLength;
 			}
-			deltaPheromone[nLocations-1][path[0]] += 1/pathLength;
+			deltaPheromone[nLocations-1][currentPath[0]] += 1/pathLength;
 			
+			//Clear visited list for next iteration.
 			clearVisitedList();
 		}
 		
+		//Update pheromone levels
 		for(int i = 0; i<nLocations;i++) {
 			for(int j = 0; j<nLocations; j++) {
 				pheromoneLevels[i][j] = (1-rho)*pheromoneLevels[i][j] + deltaPheromone[i][j];
@@ -158,20 +148,17 @@ public class AntSystem {
 	 *   of the nearest neighbor path.
 	 */
 	private void initializeAS(){
-		/*
-		 * Initialize variables
-		 */
+		
+		//Initialize variables
 		pheromoneLevels = new double[nLocations][nLocations];
 		visibility = new double[nLocations][nLocations];
 		bestPath = new int[nLocations];
-		path = new int[nLocations];
+		currentPath = new int[nLocations];
 		bestPathLength = Double.MAX_VALUE;
 		visited = new boolean[nLocations];
 		rand = new Random();
 		
-		/*
-		 * Initialize visibility matrix
-		 */
+		// Initialize visibility matrix as 1/distance between nodes
 		for(int i = 0; i < nLocations; i++) {
 			for(int j = i + 1; j < nLocations; j++) {
 				double dx = locations[i][0] - locations[j][0];
@@ -181,13 +168,11 @@ public class AntSystem {
 			}
 		}
 		
-		/*
-		 * Calculate nearest neighbor path.
-		 */
+		// Calculate nearest neighbor path.
 		int start = rand.nextInt(nLocations);
 		int lastVisited = start;
 		visited[start] = true;
-		path[0] = start;
+		currentPath[0] = start;
 		double nnPathLength = 0;
 		for(int i = 1; i < nLocations; i++){
 			int nn = 0; //Index of nearest neighbor
@@ -200,19 +185,19 @@ public class AntSystem {
 					}
 				}
 			}
-			path[i]=nn;
+			currentPath[i]=nn;
 			nnPathLength += 1/visibility[nn][lastVisited];
 			visited[nn] = true;
 			lastVisited = nn;
 		}
-		clearVisitedList();
+		
 		nnPathLength += 1/visibility[start][lastVisited];
 		bestPathLength = nnPathLength;
-		bestPath = path;
+		bestPath = currentPath;
 		
-		/*
-		 * Initialize pheromone levels to nLocations/nnPathLength
-		 */
+		clearVisitedList();
+		
+		// Initialize pheromone levels to nLocations/nnPathLength
 		double tau0 = nLocations/nnPathLength;
 		for(int i = 0; i<nLocations;i++) {
 			for(int j=0; j<nLocations;j++) {
