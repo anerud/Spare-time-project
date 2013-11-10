@@ -3,6 +3,9 @@ package antColonyOpt;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.ListIterator;
 import java.util.Random;
 
 /**
@@ -20,7 +23,7 @@ public class AntSystem {
 	private double[][] pheromoneLevels;
 	private double[][] deltaPheromone;
 	private double[][] visibility;
-	private boolean[] visited;
+	private LinkedList<Integer> notVisited;
 	private double a;
 	private double b;
 	private double rho;
@@ -36,6 +39,69 @@ public class AntSystem {
 	}
 	
 	/**
+	 * Initializes:
+	 * - Visibility matrix as distances between locations
+	 * - Pheromone levels to number of locations divided by the length
+	 *   of the nearest neighbor path.
+	 */
+	private void initializeAS(){
+		
+		//Initialize variables
+		pheromoneLevels = new double[nLocations][nLocations];
+		visibility = new double[nLocations][nLocations];
+		bestPath = new int[nLocations];
+		currentPath = new int[nLocations];
+		bestPathLength = Double.MAX_VALUE;
+		rand = new Random();
+		notVisited = getLinkedListLocations();
+		
+		// Initialize visibility matrix as 1/distance between nodes
+		for(int i = 0; i < nLocations; i++) {
+			for(int j = i + 1; j < nLocations; j++) {
+				double dx = locations[i][0] - locations[j][0];
+				double dy = locations[i][1] - locations[j][1];
+				visibility[i][j] = 1/Math.sqrt(dx*dx + dy*dy);
+				visibility[j][i] = visibility[i][j];
+			}
+		}
+		
+		// Calculate nearest neighbor path.
+		int start = rand.nextInt(nLocations);
+		removeElementInNotVisited(start);
+		int lastVisited = start;
+		currentPath[0] = start;
+		double nnPathLength = 0;
+		for(int i = 1; i < nLocations; i++){
+			ListIterator<Integer> it = notVisited.listIterator();
+			int nn = 0; //Index of nearest neighbor
+			double nnDistance = Double.MAX_VALUE;
+			while(it.hasNext()) {
+				int j = it.next();
+				if(nnDistance > 1/visibility[j][lastVisited]){
+					nn = j;
+					nnDistance = 1/visibility[j][lastVisited];
+				}
+			}
+			currentPath[i]=nn;
+			removeElementInNotVisited(nn);
+			nnPathLength += 1/visibility[nn][lastVisited];
+			lastVisited = nn;
+		}
+		
+		nnPathLength += 1/visibility[start][lastVisited];
+		bestPathLength = nnPathLength;
+		bestPath = currentPath;
+		
+		// Initialize pheromone levels to nLocations/nnPathLength
+		double tau0 = nLocations/nnPathLength;
+		for(int i = 0; i<nLocations;i++) {
+			for(int j=0; j<nLocations;j++) {
+				pheromoneLevels[i][j] = tau0;
+			}
+		}
+	}
+	
+	/**
 	 * Iterates the Ant System once.
 	 * @return the currently best path
 	 */
@@ -43,44 +109,41 @@ public class AntSystem {
 		deltaPheromone = new double[nLocations][nLocations];
 		for(int k = 0; k<nAnts; k++) {
 			
+			notVisited = getLinkedListLocations();
+			
 			//Randomize starting point in path
 			int start = rand.nextInt(nLocations);
 			currentPath[0] = start;
 			pathLength = 0;
-			visited[start]=true;
+			removeElementInNotVisited(start);
 			int lastVisited = start;
 			for(int i = 1; i<nLocations;i++) {
 				//Prepare the pheromone levels for step i in path.
 				double[] pe = new double[nLocations];
 				double marginSum = 0;
-				for(int j=0; j<nLocations;j++) {
-					if(!visited[j]) {
-						pe[j] = Math.pow(pheromoneLevels[lastVisited][j], a)*
-								 Math.pow(visibility[lastVisited][j], b);
-						marginSum += pe[j];
-					} 
+				ListIterator<Integer> it = notVisited.listIterator();
+				while(it.hasNext()) {
+					int j = it.next();
+					pe[j] = Math.pow(pheromoneLevels[lastVisited][j], a)*
+							 Math.pow(visibility[lastVisited][j], b);
+					marginSum += pe[j];
 				}
 		
 				//randomize next location in path
 				double p = rand.nextDouble()*marginSum;
-				int nextLocation = 0;
-				while(visited[nextLocation]) {
-					nextLocation++;
-				}
+				it = notVisited.listIterator();
+				int nextLocation = it.next();
 				double peCumulative = pe[nextLocation];
 				while(peCumulative < p) {
-					nextLocation++;
-					if(!visited[nextLocation]) {
-						peCumulative += pe[nextLocation];
-					}
+					nextLocation = it.next();
+					peCumulative += pe[nextLocation];
 				}
 				
 				//Update path and variables for next iteration
 				currentPath[i] = nextLocation;
 				pathLength += 1/visibility[lastVisited][nextLocation];
-				visited[nextLocation] = true;
+				it.remove();
 				lastVisited = nextLocation;
-				
 			}
 			
 			// Add the length of trip back to first location
@@ -98,8 +161,6 @@ public class AntSystem {
 			}
 			deltaPheromone[nLocations-1][currentPath[0]] += 1/pathLength;
 			
-			//Clear visited list for next iteration.
-			clearVisitedList();
 		}
 		
 		//Update pheromone levels
@@ -110,6 +171,17 @@ public class AntSystem {
 		}
 	}
 	
+	private void removeElementInNotVisited(int e) {
+		Iterator<Integer> it = notVisited.iterator();
+		while(it.hasNext()) {
+			int i = it.next();
+			if(e == i) {
+				it.remove();
+				return;
+			}
+		}
+	}
+
 	/**
 	 * @return the locations of the Ant System
 	 */
@@ -132,78 +204,12 @@ public class AntSystem {
 		return bestPathLength;
 	}
 	
-	/**
-	 * Resets the array "visited" to false.
-	 */
-	private void clearVisitedList(){
-		for(int i=0; i<nLocations;i++) {
-			visited[i]=false;
+	private LinkedList<Integer> getLinkedListLocations(){
+		LinkedList<Integer> l = new LinkedList<Integer>();
+		for(int i = 0; i< nLocations; i++) {
+			l.add(i);
 		}
-	}
-	
-	/**
-	 * Initializes:
-	 * - Visibility matrix as distances between locations
-	 * - Pheromone levels to number of locations divided by the length
-	 *   of the nearest neighbor path.
-	 */
-	private void initializeAS(){
-		
-		//Initialize variables
-		pheromoneLevels = new double[nLocations][nLocations];
-		visibility = new double[nLocations][nLocations];
-		bestPath = new int[nLocations];
-		currentPath = new int[nLocations];
-		bestPathLength = Double.MAX_VALUE;
-		visited = new boolean[nLocations];
-		rand = new Random();
-		
-		// Initialize visibility matrix as 1/distance between nodes
-		for(int i = 0; i < nLocations; i++) {
-			for(int j = i + 1; j < nLocations; j++) {
-				double dx = locations[i][0] - locations[j][0];
-				double dy = locations[i][1] - locations[j][1];
-				visibility[i][j] = 1/Math.sqrt(dx*dx + dy*dy);
-				visibility[j][i] = visibility[i][j];
-			}
-		}
-		
-		// Calculate nearest neighbor path.
-		int start = rand.nextInt(nLocations);
-		int lastVisited = start;
-		visited[start] = true;
-		currentPath[0] = start;
-		double nnPathLength = 0;
-		for(int i = 1; i < nLocations; i++){
-			int nn = 0; //Index of nearest neighbor
-			double nnDistance = Double.MAX_VALUE;
-			for(int j = 0; j < nLocations; j++) {
-				if (!visited[j]) {
-					if(nnDistance > 1/visibility[j][lastVisited]){
-						nn = j;
-						nnDistance = 1/visibility[j][lastVisited];
-					}
-				}
-			}
-			currentPath[i]=nn;
-			nnPathLength += 1/visibility[nn][lastVisited];
-			visited[nn] = true;
-			lastVisited = nn;
-		}
-		
-		nnPathLength += 1/visibility[start][lastVisited];
-		bestPathLength = nnPathLength;
-		bestPath = currentPath;
-		
-		clearVisitedList();
-		
-		// Initialize pheromone levels to nLocations/nnPathLength
-		double tau0 = nLocations/nnPathLength;
-		for(int i = 0; i<nLocations;i++) {
-			for(int j=0; j<nLocations;j++) {
-				pheromoneLevels[i][j] = tau0;
-			}
-		}
+		return l;
 	}
 	
 	/**
