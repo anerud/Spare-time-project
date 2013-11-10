@@ -8,9 +8,13 @@ import Util.Stat;
  */
 
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+
 import javax.swing.*;
 
-public class MainFFR105Data extends JFrame{
+public class MainFFR105Data extends JPanel{
 
 	private static double[][] nodes;
 	private static int[] path;
@@ -20,6 +24,13 @@ public class MainFFR105Data extends JFrame{
 	private static int circleSize = 16;
 	private static int borderDistance = 15;
 	private static int nIterations = 5000;
+	private static JButton startButton;
+	private static Stat<Double> runTimes;
+	private static String dataSource = System.getProperty("user.dir") +
+			"/data files/LoadCityLocations.txt";
+	private static MainFFR105Data f;
+	private static boolean running = false;
+			
 
 	public MainFFR105Data(){
 		super();
@@ -27,11 +38,7 @@ public class MainFFR105Data extends JFrame{
 
 	public static void main(String arg[]){
 
-		// Keep a sample of the the running time of the iterations
-		Stat<Double> runTimes = new Stat<Double>();
-
-		String dataSource = System.getProperty("user.dir") +
-				"/data files/LoadCityLocations.txt";
+		runTimes = new Stat<Double>();
 
 		/*
 		 * Create new Ant System
@@ -39,15 +46,13 @@ public class MainFFR105Data extends JFrame{
 		 * nearest neighbor path.
 		 */
 		AntSystem as = new AntSystem(dataSource, 60, 1, 2, 0.5);
-		double bestPathLength = as.getBestPathLength();
-		System.out.println("NNP length: " + bestPathLength);
 		
 		/*
 		 * Get the nodes and the current path
 		 * Also find the max coordinate value for scaling
 		 */
 		nodes = as.getLocations();
-		path = as.getBestpath();
+		path = new int[0];
 		double xyMax = 0;
 		for(int i = 0; i<nodes.length;i++) {
 			if(nodes[i][0]>xyMax) {
@@ -60,38 +65,9 @@ public class MainFFR105Data extends JFrame{
 			}
 		}
 		
-		// Create the graphical window
-		MainFFR105Data f = new MainFFR105Data();
-		f.setSize((int)xWindow,(int)yWindow);
-		f.setVisible(true);
-
-		// Iterate the ant system
-		for(int i = 0; i<nIterations; i++) {
-			double startTime = System.currentTimeMillis();
-			as.iterateACO();
-			double endTime = System.currentTimeMillis();
-			runTimes.addObservation(endTime-startTime);
-			if(bestPathLength > as.getBestPathLength()) {
-				bestPathLength = as.getBestPathLength();
-				path = as.getBestpath();
-				System.out.println("Best length: " +bestPathLength);
-				f.removeAll();
-				f.repaint();
-			}
-		}
+    	f = new MainFFR105Data();
+		f.display();
 		
-		/*
-		 * If the path is not a valid path the algorithms has a bug.
-		 * The algorithm should always produce a valid path.
-		 */
-		if(!Util.Util.isPermutation(as.getBestpath())) {
-			System.out.println("Not valid path!!!");
-		}
-		
-		System.out.println("Iteration running time mean = " + 
-				Util.Util.roundNDecimals(runTimes.getMean(),4));
-		System.out.println("Iteration running time standard deviation = " + 
-				Util.Util.roundNDecimals(runTimes.getSampleVariance(),4));
 	}
 	
 	@Override
@@ -116,5 +92,67 @@ public class MainFFR105Data extends JFrame{
 					circleSize, circleSize);
 		}
 	}
+	
+	private class ButtonPanel extends JPanel implements ActionListener {
+
+        public ButtonPanel() {
+        	JButton startButton = new JButton("Start new");
+        	startButton.addActionListener(this);
+            this.add(startButton);
+        }
+
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			/*
+			 * Create new Ant System
+			 * The best path after creation is a random 
+			 * nearest neighbor path.
+			 */
+			AntSystem as = new AntSystem(dataSource, 60, 1, 2, 0.5);
+			double bestPathLength = as.getBestPathLength();
+			System.out.println("NNP length: " + bestPathLength);
+			
+			// Iterate the ant system
+			for(int i = 0; i<nIterations; i++) {
+				double startTime = System.currentTimeMillis();
+				as.iterateACO();
+				double endTime = System.currentTimeMillis();
+				runTimes.addObservation(endTime-startTime);
+				if(bestPathLength > as.getBestPathLength()) {
+					bestPathLength = as.getBestPathLength();
+					path = as.getBestpath();
+					System.out.println("Best length: " +bestPathLength);
+					f.removeAll();
+					f.paint(f.getGraphics());
+				}
+			}
+			
+			/*
+			 * If the path is not a valid path the algorithms has a bug.
+			 * The algorithm should always produce a valid path.
+			 */
+			if(!Util.Util.isPermutation(as.getBestpath())) {
+				System.out.println("Not valid path!!!");
+			}
+			
+			System.out.println("Iteration running time mean = " + 
+					Util.Util.roundNDecimals(runTimes.getMean(),4));
+			System.out.println("Iteration running time standard deviation = " + 
+					Util.Util.roundNDecimals(runTimes.getSampleVariance(),4));
+			
+		}
+    }
+	
+	private void display() {
+        JFrame f = new JFrame("Ant System");
+        f.setPreferredSize(new Dimension((int)xWindow,(int)yWindow+100));
+        this.setSize((int)xWindow,(int)yWindow);
+        f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        f.add(this);
+        f.add(new ButtonPanel(), BorderLayout.SOUTH);
+        f.pack();
+        f.setLocationRelativeTo(null);
+        f.setVisible(true);
+    }
 } 
 
