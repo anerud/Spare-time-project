@@ -88,8 +88,10 @@ public class MainFFR105Data extends JFrame{
 			System.out.println("Not valid path!!!");
 		}
 		
-		System.out.println("Iteration running time mean = " + runTimes.getMean());
-		
+		System.out.println("Iteration running time mean = " + 
+				Util.Util.roundNDecimals(runTimes.getMean(),4));
+		System.out.println("Iteration running time standard deviation = " + 
+				Util.Util.roundNDecimals(runTimes.getSampleVariance(),4));
 	}
 	
 	@Override
